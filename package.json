@@ -4,7 +4,13 @@
   "description": "Simple game to test FB Messenger API",
   "main": "index.js",
   "private": true,
+  "engines": {
+    "node": "~4.3.0" 
+  },
   "scripts": {
+    "start": "node index.js",
+    "monitor": "nodemon index.js",
+    "deploy": "gcloud preview app deploy",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -19,6 +25,7 @@
   "homepage": "https://github.com/dapuck/fbmsgr-game#readme",
   "dependencies": {
     "hapi": "^13.3.0",
-    "memcached": "^2.2.1"
+    "memcached": "^2.2.1",
+    "wreck": "^7.2.0"
   }
 }

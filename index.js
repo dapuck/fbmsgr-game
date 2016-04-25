@@ -1,20 +1,22 @@
 /*jshint strict: true, esnext: true, node: true*/
 "use strict";
 const Hapi = require('hapi');
-//const Memcached = require('memcached');
+const Memcached = require('memcached');
 const FBMessenger = require('./messenger.js');
 const fbconfig = require('./fbconfig.json');
 
-//let mem;
-//if(process.env.MEMCACHE_PORT_11211_TCP_ADDR && 
-//   process.env.MEMCACHE_PORT_11211_TCP_PORT) {
-//    let memconnection = `${process.env.MEMCACHE_PORT_11211_TCP_ADDR}:${process.env.MEMCACHE_PORT_11211_TCP_PORT}`;
-//    mem = new Memcached(memconnection);
-//} else {
-//    // No memcache. Use Map for local testing.
-//    Map.prototype.del = Map.prototype.delete;
-//    mem = new Map();
-//}
+let mem;
+if(process.env.MEMCACHE_PORT_11211_TCP_ADDR && 
+   process.env.MEMCACHE_PORT_11211_TCP_PORT) {
+    let memconnection = `${process.env.MEMCACHE_PORT_11211_TCP_ADDR}:${process.env.MEMCACHE_PORT_11211_TCP_PORT}`;
+    mem = new Memcached(memconnection);
+} else {
+    // No memcache. Use Map for local testing.
+    Map.prototype.del = Map.prototype.delete;
+    mem = new Map();
+}
+
+const messenger = new FBMessenger(fbconfig.access_token);
 
 const server = new Hapi.Server();
 server.connection({
@@ -72,11 +74,11 @@ server.route([
             if(request.query["hub.mode"] === 'subscribe') {
                 let challange = request.query["hub.challange"];
                 let verify_token = request.query["hub.verify_token"];
-                if(verify_token === "I am token") {
+                if(verify_token === (fbconfig.verify_token || "I am not a robot")) {
                     return reply(challange);
                 }
             }
-            return reply("Not found").code(404);
+            return reply("Hello?").code(200);
         }
     },
     {

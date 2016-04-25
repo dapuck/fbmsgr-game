@@ -1,8 +1,8 @@
 /*jshint strict: true, esnext: true, node: true*/
 "use strict";
 const Hapi = require('hapi');
-const Memcached = require('memcached');
-const FBMessenger = require('./messenger');
+//const Memcached = require('memcached');
+const FBMessenger = require('./messenger.js');
 const fbconfig = require('./fbconfig.json');
 
 //let mem;

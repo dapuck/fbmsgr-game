@@ -133,7 +133,7 @@ server.route([
         handler: (request, reply) => {
             if(request.query["hub.mode"] === 'subscribe') {
                 let challange = request.query["hub.challange"];
-                let verify_token = request.query["hub.verify_token"];
+                let verify_token = request.query["hub.verify_token"].replace(/\+/g," ");
                 if(verify_token === (fbconfig.verify_token || "I am not a robot")) {
                     return reply(challange);
                 }

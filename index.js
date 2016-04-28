@@ -23,60 +23,25 @@ server.connection({
     port: process.env.PORT || 8080
 });
 
-function process_auth(req_obj) {
-    process.nextTick((entries) => {
-        function processData(id, data) {
-            mem.set(id, data);
-            // hello data.name! I'm a parrot!
-            let m = {
-                text: `Hello ${data.name}! I'm a parrot!`
-            };
-            return messenger.sendMessage(id, m);
-        }
-        
-        function noop() { return true; }
-        
-        function processError(err) {
-            //should do something.
-        }
-        
-        for(let i = 0; i < entries.length; i++) {
-            let messages = entries[i].messaging;
-            for(let j = 0; j < messages.length; j++) {
-                let message = messages[j];
-                // get user
-                // send hello
-                messenger.getUserProfile(message.sender.id)
-                .then(processData.bind(this, message.sender.id))
-                .then(noop.bind(this))
-                .catch(processError.bind(this));
-            }
-        }
-    }, req_obj.entry);
+function process_auth(message) {
+    // get user
+    // send hello
+    messenger.getUserProfile(message.sender.id)
+    .then((data) => {
+        mem.set(message.sender.id, data);
+        return messenger.sendMessage(message.sender.id,{ text: `Hello ${data.name}! I'm a parrot!` });
+    })
+    .then(() => { return true; })
+    .catch((err) => { });
 }
 
-function process_message(req_obj) {
-    process.nextTick((entries) => {
-        function noop() { return true; }
-        
-        function processError(err) {
-            //should do something.
-        }
-        
-        for(let i = 0; i < entries.length; i++) {
-            let messages = entries[i].messaging;
-            for(let j = 0; j < messages.length; j++) {
-                let message = messages[j];
-                // echo
-                let m = {
-                    text: `(${message.message.seq}) You said: ${message.message.text}`
-                };
-                messenger.sendMessage(message.sender.id, m)
-                .then(noop.bind(this))
-                .catch(processError.bind(this));
-            }
-        }
-    }, req_obj.entry);
+function process_message(message) {
+        let m = {
+            text: `(${message.message.seq}) You said: ${message.message.text}`
+        };
+        messenger.sendMessage(message.sender.id, m)
+        .then(() => { return true; })
+        .catch((err) => { });
 }
 
 function main(request, reply) {
@@ -86,22 +51,26 @@ function main(request, reply) {
     } else {
         req_obj = request.payload;
     }
-    switch(request.param.action) {
-        case "auth":
-            process_auth(req_obj);
-            break;
-        case "message":
-            process_message(req_obj);
-            break;
-        case "delivery":
-            // ignore for now
-            break;
-        case "postback":
-            // ignore for now
-            break;
-        default:
-            return reply("Not Found").code(404);
-    }
+    process.nextTick((entries) => {
+        for(let i = 0; i < entries.length; i++) {
+            let messages = entries[i].messaging;
+            for(let j = 0; j < messages.length; j++) {
+                let message = messages[j];
+                if(message.optin) {
+                    //auth
+                    process_auth(message);
+                } else if(message.message) {
+                    process_message(message);
+                } else if(message.delivery) {
+                    //nothing
+                } else if(message.postback) {
+                    //nothing
+                } else {
+                    //invalid
+                }
+            }
+        }
+    }, req_obj.entry);
     reply("OK");
 }
 

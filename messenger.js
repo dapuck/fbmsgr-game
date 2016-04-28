@@ -13,8 +13,9 @@ class FBMessenger {
         });
     }
     
-    sendMessage(userid, msg) {
+    sendMessage(userid, msg, token) {
         let payload = "";
+        let q = qs.stringify({access_token: token || this._token});
         payload = JSON.stringify({
             recipient: { id: userid },
             message: msg
@@ -22,9 +23,9 @@ class FBMessenger {
         return this._makeRequest(`/me/messages?${this._q}`,payload);
     }
     
-    getUserProfile(userid, fields) {
+    getUserProfile(userid, fields, token) {
         let params = {
-            access_token: this._token
+            access_token: token || this._token
         };
         let q = "";
         fields = (Array.isArray(fields)) ? fields.join(",") : fields;

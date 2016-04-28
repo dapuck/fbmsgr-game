@@ -2,7 +2,8 @@
 "use strict";
 const Hapi = require('hapi');
 const Memcached = require('memcached');
-const FBMessenger = require('./messenger.js');
+const FakeMemcached = require('./fakememcached');
+const FBMessenger = require('./messenger');
 const fbconfig = require('./fbconfig.json');
 
 let mem;
@@ -11,9 +12,7 @@ if(process.env.MEMCACHE_PORT_11211_TCP_ADDR &&
     let memconnection = `${process.env.MEMCACHE_PORT_11211_TCP_ADDR}:${process.env.MEMCACHE_PORT_11211_TCP_PORT}`;
     mem = new Memcached(memconnection);
 } else {
-    // No memcache. Use Map for local testing.
-    Map.prototype.del = Map.prototype.delete;
-    mem = new Map();
+    mem = new FakeMemcached();
 }
 
 const messenger = new FBMessenger(fbconfig.access_token);
@@ -24,6 +23,62 @@ server.connection({
     port: process.env.PORT || 8080
 });
 
+function process_auth(req_obj) {
+    process.nextTick((entries) => {
+        function processData(id, data) {
+            mem.set(id, data);
+            // hello data.name! I'm a parrot!
+            let m = {
+                text: `Hello ${data.name}! I'm a parrot!`
+            };
+            return messenger.sendMessage(id, m);
+        }
+        
+        function noop() { return true; }
+        
+        function processError(err) {
+            //should do something.
+        }
+        
+        for(let i = 0; i < entries.length; i++) {
+            let messages = entries[i].messaging;
+            for(let j = 0; j < messages.length; j++) {
+                let message = messages[j];
+                // get user
+                // send hello
+                messenger.getUserProfile(message.sender.id)
+                .then(processData.bind(this, message.sender.id))
+                .then(noop.bind(this))
+                .catch(processError.bind(this));
+            }
+        }
+    }, req_obj.entry);
+}
+
+function process_message(req_obj) {
+    process.nextTick((entries) => {
+        function noop() { return true; }
+        
+        function processError(err) {
+            //should do something.
+        }
+        
+        for(let i = 0; i < entries.length; i++) {
+            let messages = entries[i].messaging;
+            for(let j = 0; j < messages.length; j++) {
+                let message = messages[j];
+                // echo
+                let m = {
+                    text: `(${message.message.seq}) You said: ${message.message.text}`
+                };
+                messenger.sendMessage(message.sender.id, m)
+                .then(noop.bind(this))
+                .catch(processError.bind(this));
+            }
+        }
+    }, req_obj.entry);
+}
+
 function main(request, reply) {
     let req_obj = {};
     if(typeof request.payload === 'string') {
@@ -33,16 +88,21 @@ function main(request, reply) {
     }
     switch(request.param.action) {
         case "auth":
+            process_auth(req_obj);
             break;
         case "message":
+            process_message(req_obj);
             break;
         case "delivery":
+            // ignore for now
             break;
         case "postback":
+            // ignore for now
             break;
         default:
             return reply("Not Found").code(404);
     }
+    reply("OK");
 }
 
 server.route([

@@ -17,9 +17,10 @@ class FBMessenger {
         let payload = "";
         let q = qs.stringify({access_token: token || this._token});
         payload = JSON.stringify({
-            recipient: { id: userid },
+            recipient: { id: userid + "" },
             message: msg
         });
+        console.log("payload: ", payload);
         return this._makeRequest(`/me/messages?${this._q}`,payload);
     }
     
@@ -42,6 +43,10 @@ class FBMessenger {
         if(payload) {
             method = "POST";
             opts.payload = payload;
+            opts.headers = {
+                'Content-Type': 'application/json',
+                'Content-Length': payload.length
+            };
         }
         return new Promise((resolve, reject) => {
             this._wreck.request(
@@ -52,10 +57,18 @@ class FBMessenger {
                     if(err) {
                         return reject(err);
                     }
-                    if(response.body.error) {
-                        return reject(response.body.error);
-                    }
-                    return resolve(response.body);
+                    this._wreck.read(response,null, (err,payload) => {
+                        if(err) {
+                            return reject(err);
+                        }
+                        if(Buffer.isBuffer(payload)) {
+                            payload = JSON.parse(payload.toString());
+                        }
+                        if(payload.error) {
+                            return reject(payload.error);
+                        }
+                        return resolve(payload);
+                    });
                 }
             );
         });

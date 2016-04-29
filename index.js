@@ -41,7 +41,12 @@ function process_auth(message) {
     .then((data) => {
         console.log("User profile", data);
         logger.info("User profile", data);
-        mem.set(message.sender.id, data);
+        mem.set(message.sender.id, data, 7200, (err) => {
+            if(err) {
+                return console.log(err);
+            }
+            console.log("Cached profile");
+        });
         return messenger.sendMessage(message.sender.id,{ text: `Hello ${data.name}! I'm a parrot!` });
     })
     .then((data) => {
@@ -60,6 +65,20 @@ function process_message(message) {
     let m = {
         text: `(${message.message.seq}) You said: ${message.message.text}`
     };
+    mem.get(message.sender.id, (err,data) => {
+        if(!data) {
+            messenger.getUserProfile(message.sender.id)
+            .then((data) => {
+                console.log("User profile", data);
+                mem.set(message.sender.id, data, 7200, (err) => {
+                    if(err) {
+                        return console.log(err);
+                    }
+                    console.log("Cached profile");
+                });
+            });
+        }
+    });
     messenger.sendMessage(message.sender.id, m)
     .then((data) => {
         console.log("Message sent", data);

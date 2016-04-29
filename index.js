@@ -5,6 +5,17 @@ const Memcached = require('memcached');
 const FakeMemcached = require('./fakememcached');
 const FBMessenger = require('./messenger');
 const fbconfig = require('./fbconfig.json');
+const winston = require('winston');
+require('winston-gae');
+
+const logger = new winston.Logger({
+    levels: winston.config.GoogleAppEngine.levels,
+    transports: [
+        new winston.transports.GoogleAppEngine({
+            level: 'emergency'
+        })
+    ]
+});
 
 let mem;
 if(process.env.MEMCACHE_PORT_11211_TCP_ADDR && 
@@ -28,20 +39,37 @@ function process_auth(message) {
     // send hello
     messenger.getUserProfile(message.sender.id)
     .then((data) => {
+        console.log("User profile", data);
+        logger.info("User profile", data);
         mem.set(message.sender.id, data);
         return messenger.sendMessage(message.sender.id,{ text: `Hello ${data.name}! I'm a parrot!` });
     })
-    .then(() => { return true; })
-    .catch((err) => { });
+    .then((data) => {
+        console.log("Message sent", data);
+        logger.info("Message sent", data);
+        return true;
+    })
+    .catch((err) => {
+        console.log(err);
+        logger.error(err);
+    });
 }
 
 function process_message(message) {
-        let m = {
-            text: `(${message.message.seq}) You said: ${message.message.text}`
-        };
-        messenger.sendMessage(message.sender.id, m)
-        .then(() => { return true; })
-        .catch((err) => { });
+    console.log("Got message", message);
+    let m = {
+        text: `(${message.message.seq}) You said: ${message.message.text}`
+    };
+    messenger.sendMessage(message.sender.id, m)
+    .then((data) => {
+        console.log("Message sent", data);
+        logger.info("Message sent", data);
+        return true;
+    })
+    .catch((err) => {
+        console.log(err);
+        logger.error(err);
+    });
 }
 
 function main(request, reply) {
@@ -51,6 +79,8 @@ function main(request, reply) {
     } else {
         req_obj = request.payload;
     }
+    console.log("Recived request:",req_obj);
+    logger.info("Recived request:",req_obj);
     process.nextTick((entries) => {
         for(let i = 0; i < entries.length; i++) {
             let messages = entries[i].messaging;

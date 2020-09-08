@@ -1,6 +1,6 @@
 /*jshint strict: true, esnext: true, node: true*/
 "use strict";
-const Wreck = require("wreck");
+const Wreck = require("@hapi/wreck");
 const qs = require("querystring");
 
 class FBMessenger {
